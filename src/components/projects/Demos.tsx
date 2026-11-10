@@ -338,6 +338,7 @@ const INVOICE_SAMPLES = [
   { label: "Missing fields", value: "invoice-missing-fields.pdf" },
 ];
 const INVOICE_FIELDS = ["invoice_number", "vendor_name", "invoice_date", "due_date", "currency", "subtotal", "tax_amount", "tax_rate_percent", "total"];
+const MAX_INVOICE_BYTES = 4 * 1024 * 1024;
 const fmt = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : String(v));
 
 export function InvoiceDemo() {
@@ -350,7 +351,7 @@ export function InvoiceDemo() {
   };
 
   return (
-    <DemoShell slug="ai-invoice-processing" intro="Upload a PDF invoice (max 5 MB) or use one of the generated sample invoices. Claude extracts the fields, then the validator checks them. The file is not stored.">
+    <DemoShell slug="ai-invoice-processing" intro="Upload a PDF invoice (max 4 MB) or use one of the generated sample invoices. Claude extracts the fields, then the validator checks them. The file is not stored.">
       {(connected) => (
         <>
           <form
@@ -358,6 +359,10 @@ export function InvoiceDemo() {
             onSubmit={(e) => {
               e.preventDefault();
               if (!file) return;
+              if (file.size > MAX_INVOICE_BYTES) {
+                run(() => Promise.reject(new Error("This PDF is larger than 4 MB. Please choose a smaller file.")));
+                return;
+              }
               const fd = new FormData();
               fd.append("file", file);
               run(() => callDemo("ai-invoice-processing", { body: fd }));
@@ -433,7 +438,7 @@ type MeetingResult = {
     summary: string;
     keyPoints: string[];
     decisions: { decision: string; line: number; quote: string }[];
-    actionItems: { task: string; owner: string | null; deadline: string | null; line: number; notes: string[] }[];
+    actionItems: { task: string; owner: string | null; deadline: string | null; dueDate?: string | null; line: number; notes: string[] }[];
     openQuestions: string[];
     rejected: { kind: string; text: string; reason: string }[];
   };
@@ -503,7 +508,7 @@ export function MeetingDemo() {
                     {result.notes.actionItems.map((a) => (
                       <li key={a.task}>
                         <strong>{a.task}</strong>
-                        <span className="text-ink-muted"> · {a.owner ?? "Unassigned"} · {a.deadline ?? "no deadline"} · L{a.line}</span>
+                        <span className="text-ink-muted"> · {a.owner ?? "Unassigned"} · {a.deadline ? (a.dueDate ? `${a.deadline} (${a.dueDate})` : a.deadline) : "no deadline"} · L{a.line}</span>
                         {a.notes.map((n) => <span key={n} className="block text-xs text-ink-muted">{n}</span>)}
                       </li>
                     ))}

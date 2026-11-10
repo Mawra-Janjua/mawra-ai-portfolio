@@ -7,6 +7,7 @@ import { automationDetails, getAutomationDetail } from "@/lib/automation-project
 import { profile } from "@/lib/data";
 import { Reveal } from "@/components/ui";
 import { ProjectDemo } from "@/components/projects/Demos";
+import { ArchitectureDiagram } from "@/components/projects/ArchitectureDiagram";
 import Footer from "@/components/Footer";
 
 export function generateStaticParams() {
@@ -140,6 +141,8 @@ async function ProjectContent({ params }: { params: PageProps<"/projects/[slug]"
         </SectionCard>
 
         <SectionCard id="architecture" eyebrow="Workflow architecture" title="How data flows">
+          <ArchitectureDiagram title={p.title} architecture={p.architecture} />
+          <h3 className="mb-3 mt-8 font-semibold text-ink">Step by step</h3>
           <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {p.flow.map((s, i) => (
               <li key={s.title} className="relative flex gap-4 rounded-2xl border border-rose-line bg-blush p-5">

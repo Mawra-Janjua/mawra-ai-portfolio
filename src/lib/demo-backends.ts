@@ -15,7 +15,8 @@ type Backend = {
 export const BACKENDS: Record<ProjectSlug, Backend> = {
   "ai-email-automation": { urlEnv: "EMAIL_AGENT_URL", keyEnv: "EMAIL_AGENT_API_KEY", analyzePath: "/api/analyze", maxBytes: 64 * 1024 },
   "ai-lead-generation": { urlEnv: "LEAD_AGENT_URL", keyEnv: "LEAD_AGENT_API_KEY", analyzePath: "/api/analyze", maxBytes: 64 * 1024 },
-  "ai-invoice-processing": { urlEnv: "INVOICE_API_URL", keyEnv: "INVOICE_API_KEY", analyzePath: "/api/analyze", maxBytes: 5 * 1024 * 1024 },
+  // Vercel rejects request bodies over 4.5 MB, so the invoice demo stays below that.
+  "ai-invoice-processing": { urlEnv: "INVOICE_API_URL", keyEnv: "INVOICE_API_KEY", analyzePath: "/api/analyze", maxBytes: 4 * 1024 * 1024 },
   "ai-meeting-assistant": { urlEnv: "MEETING_API_URL", keyEnv: "MEETING_API_KEY", analyzePath: "/api/analyze", maxBytes: 256 * 1024 },
 };
 
