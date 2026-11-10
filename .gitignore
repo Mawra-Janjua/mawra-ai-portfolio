@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Standalone automation project repos (each is its own git repository)
+/automation-projects/
+!.env.example

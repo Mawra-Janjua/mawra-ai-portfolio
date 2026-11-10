@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local backups and the standalone automation repos (each has its own tooling).
+    "backup/**",
+    "automation-projects/**",
   ]),
 ]);
 
