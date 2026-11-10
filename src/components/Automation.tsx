@@ -7,10 +7,10 @@ import { ArrowUpRight, CheckCircle2, CircleDashed, FlaskConical, Github, Workflo
 import { automationProjects, type AutomationProject } from "@/lib/data";
 import { Section } from "./ui";
 
-function WorkflowNodes({ steps }: { steps: string[] }) {
+function WorkflowNodes({ steps, planned }: { steps: string[]; planned: boolean }) {
   const reduce = useReducedMotion();
   return (
-    <div className="flex items-center" aria-label={`Planned workflow: ${steps.join(", then ")}`} role="img">
+    <div className="flex items-center" aria-label={`${planned ? "Planned workflow" : "Workflow"}: ${steps.join(", then ")}`} role="img">
       {steps.map((s, i) => (
         <Fragment key={s}>
           <motion.div
@@ -75,7 +75,7 @@ function AutomationCard({ p, index }: { p: AutomationProject; index: number }) {
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-muted">
           {done ? "Workflow" : "Planned workflow"}
         </p>
-        <WorkflowNodes steps={p.steps} />
+        <WorkflowNodes steps={p.steps} planned={!done} />
         <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
           <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-ink underline decoration-rose-deep decoration-2 underline-offset-4 transition-colors group-hover:decoration-ink">
             View project, architecture &amp; demo <ArrowUpRight size={16} className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />

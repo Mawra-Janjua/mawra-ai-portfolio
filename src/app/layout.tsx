@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Cormorant_Garamond, Plus_Jakarta_Sans } from "next/font/google";
 import MotionProvider from "@/components/MotionProvider";
+import { siteUrl } from "@/lib/site";
 import "./globals.css";
 
 const display = Cormorant_Garamond({
@@ -19,6 +20,7 @@ const sans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: siteUrl(),
   title: "Mawra Akbar Janjua — Junior AI Software Engineer",
   description:
     "Portfolio of Mawra Akbar Janjua, a Junior AI Software Engineer from Lahore, Pakistan, working with computer vision, NLP, machine learning and mobile software.",

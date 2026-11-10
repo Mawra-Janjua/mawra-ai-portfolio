@@ -19,6 +19,8 @@ export type AutomationProjectDetail = {
   features: { title: string; detail: string }[];
   stack: string[];
   flow: FlowStep[];
+  /** Components shown in the architecture diagram, left to right. */
+  architecture: { inputs: string[]; services: string[]; review: string; outputs: string[] };
   safeguards: string[];
   integrations: { name: string; required: boolean; note: string }[];
   setup: { label: string; command?: string; note?: string }[];
@@ -59,6 +61,12 @@ export const automationDetails: AutomationProjectDetail[] = [
       { title: "Review", detail: "Human edits, approves or rejects" },
       { title: "Send & log", detail: "Gmail API reply in thread, activity log" },
     ],
+    architecture: {
+      inputs: ["Gmail inbox (n8n trigger)", "Scheduled Gmail sync", "Webhook or REST API"],
+      services: ["Claude API: classify and draft", "Gmail API: threaded send"],
+      review: "Review queue: a person edits, approves or rejects every draft",
+      outputs: ["Reply sent in the Gmail thread", "Activity log (SQLite)", "Urgent alert to the reviewer"],
+    },
     safeguards: [
       "Email text is passed to Claude as data inside tags; the prompt forbids following instructions in it.",
       "Without a Claude key, emails are stored unprocessed and the API says so. No placeholder classification is produced.",
@@ -77,7 +85,7 @@ export const automationDetails: AutomationProjectDetail[] = [
       { label: "Or with n8n", command: "docker compose up -d --build" },
     ],
     testing: {
-      total: 35,
+      total: 68,
       command: "npm run check",
       areas: [
         "Classify → draft → approve flow, spam handling, idempotent ingest",
@@ -90,7 +98,7 @@ export const automationDetails: AutomationProjectDetail[] = [
     n8nWorkflows: [
       { file: "gmail-intake.workflow.json", detail: "Gmail Trigger → map fields → agent → alert reviewer if urgent" },
       { file: "scheduled-gmail-sync.workflow.json", detail: "Every 5 minutes → /api/gmail/sync → fail on errors" },
-      { file: "webhook-intake.workflow.json", detail: "Public webhook → agent → response" },
+      { file: "webhook-intake.workflow.json", detail: "Header-authenticated webhook → agent → response, with retries and a JSON error reply" },
     ],
     screenshots: [],
   },
@@ -123,6 +131,12 @@ export const automationDetails: AutomationProjectDetail[] = [
       { title: "Score", detail: "ICP signals + Claude tier A–D" },
       { title: "Outreach & export", detail: "Draft for good fits · CSV / Sheets" },
     ],
+    architecture: {
+      inputs: ["n8n form or webhook", "Google Sheets rows", "REST API batch"],
+      services: ["Claude API: ICP score and outreach", "Hunter.io: company and email", "DNS MX check"],
+      review: "Outreach is drafted for a person to send; nothing is emailed automatically",
+      outputs: ["Scored leads (SQLite)", "CSV export", "Google Sheets"],
+    },
     safeguards: [
       "The lead's email address is never sent to the model; only an allow-listed set of fields is.",
       "Unknown data stays null (e.g. a DNS timeout is 'unknown', not 'invalid').",
@@ -141,7 +155,7 @@ export const automationDetails: AutomationProjectDetail[] = [
       { label: "Export", command: "curl -H \"x-api-key: $API_KEY\" localhost:4102/api/leads/export.csv -o leads.csv" },
     ],
     testing: {
-      total: 34,
+      total: 66,
       command: "npm run check",
       areas: [
         "Normalisation rules and edge cases; ICP signals",
@@ -152,8 +166,9 @@ export const automationDetails: AutomationProjectDetail[] = [
       ],
     },
     n8nWorkflows: [
-      { file: "google-sheets-qualify.workflow.json", detail: "Read 'Leads In' → batches of 50 → agent → append to 'Scored Leads'" },
-      { file: "webhook-intake.workflow.json", detail: "Webhook → agent → summary response + append created leads to Sheets" },
+      { file: "google-sheets-qualify.workflow.json", detail: "Unprocessed 'Leads In' rows → batches of 50 → agent → append created leads, write status back" },
+      { file: "webhook-intake.workflow.json", detail: "Header-authenticated webhook → agent → summary response + append created leads to Sheets" },
+      { file: "lead-form.workflow.json", detail: "n8n form → agent → score and tier shown on the completion page" },
     ],
     screenshots: [],
   },
@@ -175,7 +190,8 @@ export const automationDetails: AutomationProjectDetail[] = [
       { title: "Arithmetic checks", detail: "Line totals, subtotal, tax rate and grand total recomputed with rounding tolerance." },
       { title: "Anomaly flags", detail: "Missing fields, invalid dates, duplicate vendor + number, high value, unusual tax rates." },
       { title: "Grounding check", detail: "Invoice number, total and vendor must appear in the PDF text, which catches hallucinated values." },
-      { title: "Manual review + export", detail: "Audited corrections, approve/reject with reasons, JSON and CSV export." },
+      { title: "Confidence-based review", detail: "Low model confidence or unreadable fields send the invoice to a person, with the fields to check." },
+      { title: "Manual review + export", detail: "Audited corrections, approve/reject with reasons, a recorded override for genuine exceptions, JSON and CSV export." },
     ],
     stack: ["TypeScript", "Node.js 24", "Claude API", "unpdf (pdf.js)", "n8n", "Gmail", "SQLite", "Zod"],
     flow: [
@@ -186,6 +202,12 @@ export const automationDetails: AutomationProjectDetail[] = [
       { title: "Review", detail: "Correct, approve or reject (audited)" },
       { title: "Export", detail: "JSON · invoice CSV · line-item CSV" },
     ],
+    architecture: {
+      inputs: ["Gmail attachments (n8n)", "Upload webhook", "Review UI upload"],
+      services: ["PDF text layer (unpdf)", "Claude API: structured extraction"],
+      review: "Flagged or uncertain invoices wait for a person to correct, approve or reject",
+      outputs: ["JSON", "Invoice and line-item CSV", "Daily CSV email to accounting"],
+    },
     safeguards: [
       "Error flags block approval. Warnings require a written override reason.",
       "Reviewer corrections are re-validated and logged with old and new values.",
@@ -203,7 +225,7 @@ export const automationDetails: AutomationProjectDetail[] = [
       { label: "Live accuracy check", command: "npm run eval:live", note: "Runs real Claude on the sample PDFs and compares with ground truth." },
     ],
     testing: {
-      total: 33,
+      total: 60,
       command: "npm run check",
       areas: [
         "Real PDF text extraction from generated fixtures; scanned, corrupt and oversized files",
@@ -216,7 +238,7 @@ export const automationDetails: AutomationProjectDetail[] = [
     n8nWorkflows: [
       { file: "gmail-invoice-intake.workflow.json", detail: "Gmail PDF attachments → API → email the AP reviewer if flagged" },
       { file: "upload-webhook.workflow.json", detail: "Multipart webhook → API → response" },
-      { file: "daily-approved-export.workflow.json", detail: "Daily approved-invoice CSV emailed to accounting" },
+      { file: "daily-approved-export.workflow.json", detail: "Daily CSV of newly approved invoices emailed to accounting (incremental, no resends)" },
     ],
     screenshots: [],
   },
@@ -236,9 +258,9 @@ export const automationDetails: AutomationProjectDetail[] = [
       { title: "Transcript parsing", detail: "Speaker labels, WebVTT voice tags, SRT captions and timestamps, as numbered lines." },
       { title: "Claude notes", detail: "Summary, key points, decisions, action items and open questions as structured JSON." },
       { title: "Evidence verification", detail: "Cited quotes must exist; wrong line numbers are corrected; duplicates are merged." },
-      { title: "Owner & deadline rules", detail: "Kept only when explicitly assigned, volunteered, or said in the transcript." },
+      { title: "Owner & deadline rules", detail: "Kept only when explicitly assigned, volunteered, or said in the transcript. Spoken deadlines become calendar dates from the meeting date." },
       { title: "Follow-up drafts", detail: "Written from verified items only. n8n saves them as Gmail drafts, never auto-sent." },
-      { title: "Export + optional STT", detail: "Markdown and JSON export; Deepgram transcription when configured." },
+      { title: "Export + optional STT", detail: "Markdown and JSON export; audio recordings are transcribed with Deepgram and summarised in one call when configured." },
     ],
     stack: ["TypeScript", "Node.js 24", "Claude API", "Deepgram (optional)", "n8n", "Google Drive", "Gmail", "SQLite"],
     flow: [
@@ -249,6 +271,12 @@ export const automationDetails: AutomationProjectDetail[] = [
       { title: "Follow-up", detail: "Email draft from verified items only" },
       { title: "Export", detail: "Markdown · JSON · Gmail draft" },
     ],
+    architecture: {
+      inputs: ["Transcript text, VTT or SRT", "Google Drive folder (n8n)", "Audio recording"],
+      services: ["Claude API: notes and follow-up", "Deepgram: speech-to-text (optional)"],
+      review: "Evidence check drops any item its quote does not support; the follow-up stays a draft",
+      outputs: ["Markdown notes", "Structured JSON", "Gmail draft follow-up"],
+    },
     safeguards: [
       "Unsupported decisions and tasks are removed and listed with the reason.",
       "Speaking near a task is not ownership. Owners must be named or must commit ('I'll…').",
@@ -266,7 +294,7 @@ export const automationDetails: AutomationProjectDetail[] = [
       { label: "Summarise a file", command: "curl -X POST \"localhost:4104/api/meetings?title=Sync\" -H \"x-api-key: $API_KEY\" -H \"content-type: text/plain\" --data-binary @test/fixtures/product-sync.txt" },
     ],
     testing: {
-      total: 27,
+      total: 63,
       command: "npm run check",
       areas: [
         "Text, WebVTT and SRT parsing; speaker detection that ignores sentences with colons",

@@ -7,6 +7,11 @@ import { allowRequest, backendFor } from "@/lib/demo-backends";
 
 type Ctx = { params: Promise<{ project: string }> };
 
+// A meeting summary makes two sequential Claude calls; allow up to 5 minutes
+// (the maximum on Vercel's Hobby plan with Fluid Compute).
+export const maxDuration = 300;
+const UPSTREAM_TIMEOUT_MS = 290_000;
+
 const json = (status: number, body: unknown) => Response.json(body, { status, headers: { "cache-control": "no-store" } });
 
 const notConnected = (envUrl: string, envKey: string) =>
@@ -40,7 +45,8 @@ export async function POST(req: Request, { params }: Ctx) {
   if (!b) return json(404, { error: { code: "unknown_project", message: "Unknown project." } });
   if (!b.url || !b.key) return notConnected(b.urlEnv, b.keyEnv);
 
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+  // On Vercel these headers are set by the platform, not by the visitor.
+  const ip = req.headers.get("x-real-ip")?.trim() || req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
   if (!allowRequest(ip)) return json(429, { error: { code: "rate_limited", message: "Too many demo requests. Please wait a minute." } });
 
   const declared = Number(req.headers.get("content-length") ?? 0);
@@ -58,7 +64,7 @@ export async function POST(req: Request, { params }: Ctx) {
         "x-forwarded-for": ip,
       },
       body,
-      signal: AbortSignal.timeout(180_000),
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
       cache: "no-store",
     });
     const text = await upstream.text();
